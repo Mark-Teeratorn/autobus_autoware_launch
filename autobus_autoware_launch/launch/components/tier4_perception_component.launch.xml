@@ -65,7 +65,7 @@
   <arg name="camera_2d_detector/label_path" default="$(var data_path)/tensorrt_yolox/label.txt" description="label path"/>
   <arg name="camera_2d_detector/color_map_path" default="$(var data_path)/tensorrt_yolox/semseg_color_map.csv" description="color map path"/>
 
-  <arg name="traffic_light_recognition/camera_namespaces" default="[camera6, camera7]" description="choose camera which use for traffic light recognition"/>
+  <arg name="traffic_light_recognition/camera_namespaces" default="[traffic_light]" description="choose camera which use for traffic light recognition"/>
   <arg name="traffic_light_recognition/use_high_accuracy_detection" default="true" description="select whether to use high accuracy detector for traffic light recognition"/>
   <arg
     name="traffic_light_recognition/high_accuracy_detection_type"
@@ -245,6 +245,10 @@
     <arg
       name="obstacle_segmentation_ground_segmentation_elevation_map_param_path"
       value="$(find-pkg-share autobus_autoware_launch)/config/perception/obstacle_segmentation/ground_segmentation/elevation_map_parameters.yaml"
+    />
+    <arg
+      name="ogm_outlier_filter_param_path"
+      value="$(find-pkg-share autobus_autoware_launch)/config/perception/obstacle_segmentation/occupancy_grid_based_outlier_filter/occupancy_grid_map_outlier_filter.param.yaml"
     />
 
     <!-- occupancy grid map parameters -->

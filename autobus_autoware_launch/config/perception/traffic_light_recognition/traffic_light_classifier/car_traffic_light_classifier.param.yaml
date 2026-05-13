@@ -8,3 +8,4 @@
     under_exposure_threshold: -0.83
     classifier_type: 1
     traffic_light_type: 0
+    backlight_threshold: 0.85

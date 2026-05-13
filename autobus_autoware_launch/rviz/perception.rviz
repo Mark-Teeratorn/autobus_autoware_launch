@@ -1009,7 +1009,7 @@ Visualization Manager:
                 Durability Policy: Volatile
                 History Policy: Keep Last
                 Reliability Policy: Best Effort
-                Value: /perception/traffic_light_recognition/camera6/debug/rois
+                Value: /perception/traffic_light_recognition/traffic_light/debug/rois
               Value: false
             - Class: rviz_default_plugins/MarkerArray
               Enabled: true
@@ -1021,7 +1021,7 @@ Visualization Manager:
                 Durability Policy: Volatile
                 History Policy: Keep Last
                 Reliability Policy: Best Effort
-                Value: /perception/traffic_light_recognition/camera6/detection/traffic_light_map_based_detector/debug/markers
+                Value: /perception/traffic_light_recognition/traffic_light/detection/traffic_light_map_based_detector/debug/markers
               Value: true
           Enabled: true
           Name: TrafficLight
@@ -3110,7 +3110,7 @@ Visualization Manager:
                 Durability Policy: Volatile
                 History Policy: Keep Last
                 Reliability Policy: Best Effort
-                Value: /sensing/camera/camera6/image_raw
+                Value: /sensing/camera/traffic_light/image_raw
               Value: true
               Visibility:
                 Control:
