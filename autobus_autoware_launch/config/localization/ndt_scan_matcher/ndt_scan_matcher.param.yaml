@@ -1,3 +1,6 @@
+# NOTE: Requires SmartPoseBuffer fix in autoware_localization_util (retaining >= 2 poses)
+# to prevent 'pose_buffer_.size() < 2' underflow when LiDAR rate (20 Hz) > EKF rate (14-18 Hz).
+# See autobus_autoware_launch/patches/0001-fix-autoware_localization_util-prevent-SmartPoseBuff.patch
 /**:
   ros__parameters:
     frame:

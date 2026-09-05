@@ -1,0 +1,98 @@
+From b7e73dcd22400f05800e3230d4fa2b4f4dc05495 Mon Sep 17 00:00:00 2001
+From: Mark-Teeratorn <teeratorncncroom@gmail.com>
+Date: Sat, 5 Sep 2026 19:07:14 +0700
+Subject: [PATCH] fix(autoware_localization_util): prevent SmartPoseBuffer
+ underflow causing size < 2
+
+---
+ .../src/smart_pose_buffer.cpp                 |  6 +-
+ .../test/test_smart_pose_buffer.cpp           | 56 +++++++++++++++++++
+ 2 files changed, 60 insertions(+), 2 deletions(-)
+
+diff --git a/localization/autoware_localization_util/src/smart_pose_buffer.cpp b/localization/autoware_localization_util/src/smart_pose_buffer.cpp
+index 3b529d68..eae257d3 100644
+--- a/localization/autoware_localization_util/src/smart_pose_buffer.cpp
++++ b/localization/autoware_localization_util/src/smart_pose_buffer.cpp
+@@ -110,8 +110,10 @@ void SmartPoseBuffer::push_back(const PoseWithCovarianceStamped::ConstSharedPtr
+ void SmartPoseBuffer::pop_old(const rclcpp::Time & target_ros_time)
+ {
+   std::lock_guard<std::mutex> lock(mutex_);
+-  while (!pose_buffer_.empty()) {
+-    if (rclcpp::Time(pose_buffer_.front()->header.stamp) >= target_ros_time) {
++  // Maintain at least 2 poses so that interpolate() always has enough data to interpolate/extrapolate.
++  // Only pop the front pose if the second pose is already at or before target_ros_time.
++  while (pose_buffer_.size() > 2) {
++    if (rclcpp::Time(pose_buffer_[1]->header.stamp) > target_ros_time) {
+       break;
+     }
+     pose_buffer_.pop_front();
+diff --git a/localization/autoware_localization_util/test/test_smart_pose_buffer.cpp b/localization/autoware_localization_util/test/test_smart_pose_buffer.cpp
+index 6a9aa0c9..c4798bdb 100644
+--- a/localization/autoware_localization_util/test/test_smart_pose_buffer.cpp
++++ b/localization/autoware_localization_util/test/test_smart_pose_buffer.cpp
+@@ -295,6 +295,62 @@ TEST(TestSmartPoseBuffer, target_time_after_last_pose)  // NOLINT
+   EXPECT_FALSE(result2.has_value());
+ }
+ 
++TEST(TestSmartPoseBuffer, continuous_stream_with_pop_old)  // NOLINT
++{
++  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
++  const double timeout = 2.0;
++  SmartPoseBuffer smart_pose_buffer(logger, timeout, 10.0);
++
++  // Simulate continuous streaming: EKF poses at 10 Hz, LiDAR at 20 Hz
++  // Push 2 initial poses (0.0s and 0.1s)
++  for (int i = 0; i < 2; ++i) {
++    auto pose = std::make_shared<PoseWithCovarianceStamped>();
++    pose->header.stamp.sec = 0;
++    pose->header.stamp.nanosec = i * 100000000;  // 0.0s, 0.1s
++    pose->pose.pose.position.x = i * 1.0;
++    smart_pose_buffer.push_back(pose);
++  }
++
++  // LiDAR arrives at 0.05s
++  builtin_interfaces::msg::Time lidar_1;
++  lidar_1.sec = 0;
++  lidar_1.nanosec = 50000000;
++  auto res1 = smart_pose_buffer.interpolate(lidar_1);
++  EXPECT_TRUE(res1.has_value());
++  smart_pose_buffer.pop_old(lidar_1);
++
++  // Next LiDAR arrives at 0.10s (before any new EKF pose)
++  builtin_interfaces::msg::Time lidar_2;
++  lidar_2.sec = 0;
++  lidar_2.nanosec = 100000000;
++  auto res2 = smart_pose_buffer.interpolate(lidar_2);
++  EXPECT_TRUE(res2.has_value());  // Must NOT fail with size < 2!
++  smart_pose_buffer.pop_old(lidar_2);
++
++  // Next LiDAR arrives at 0.15s (slightly ahead of latest EKF pose)
++  builtin_interfaces::msg::Time lidar_3;
++  lidar_3.sec = 0;
++  lidar_3.nanosec = 150000000;
++  auto res3 = smart_pose_buffer.interpolate(lidar_3);
++  EXPECT_TRUE(res3.has_value());  // Must extrapolate without buffer underflow!
++  smart_pose_buffer.pop_old(lidar_3);
++
++  // Add next EKF pose at 0.2s
++  auto pose3 = std::make_shared<PoseWithCovarianceStamped>();
++  pose3->header.stamp.sec = 0;
++  pose3->header.stamp.nanosec = 200000000;
++  pose3->pose.pose.position.x = 2.0;
++  smart_pose_buffer.push_back(pose3);
++
++  // Next LiDAR arrives at 0.20s
++  builtin_interfaces::msg::Time lidar_4;
++  lidar_4.sec = 0;
++  lidar_4.nanosec = 200000000;
++  auto res4 = smart_pose_buffer.interpolate(lidar_4);
++  EXPECT_TRUE(res4.has_value());
++  smart_pose_buffer.pop_old(lidar_4);
++}
++
+ int main(int argc, char ** argv)
+ {
+   rclcpp::init(argc, argv);
+-- 
+2.34.1
+
